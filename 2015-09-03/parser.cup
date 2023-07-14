@@ -1,0 +1,185 @@
+
+import java_cup.runtime.*;
+import java.util.*;
+import java.io.*;
+
+
+
+parser code {:
+     public HashMap<String,HashMap<String,Integer>> table=new HashMap<>();
+    
+ 
+    public Object stack(int position) {
+        return (((Symbol)stack.elementAt(tos+position)).value);
+    };
+:};
+
+
+
+//////////////////////////////////
+///// SYMBOLS DECLARATION
+/////////////////////////////////
+
+terminal SEP, TOK1, TOK2, TOK3, S, OT, CT, CM, EQ, OP, CP, OR, COL;
+terminal String QSTRING, MS_WD, PRINTMM, ARR, PART, M_WD ;
+terminal Integer INUM ;
+
+non terminal prog, header, header1, token1, car_section, cars, race_section ;
+non terminal HashMap speeds ;
+non terminal Object[] performance, performances;
+non terminal String car_name, section_name, nt0, nt1, nt2, nt3;
+non terminal Integer[] print_min_max, section_names ;
+non terminal Integer speed_value, distance, drive_stats, part_name, parts, part;
+// non terminal Object [] ;
+
+
+//////////////////////////////////
+///// GRAMMAR
+/////////////////////////////////
+
+start with prog
+;
+
+prog    ::= header SEP car_section SEP race_section
+;
+
+header ::= header1 TOK2 S header1 TOK3 S header1 | header1 TOK3 S header1 TOK2 S header1
+;
+
+header1 ::= token1
+;
+
+token1 ::= token1 TOK1 S 
+| ;
+
+car_section ::= cars cars | car_section cars cars
+;
+
+cars ::= car_name:name OT speeds:s CT {: parser.table.put(name, s); :}
+;
+
+speeds ::= section_name:sname EQ speed_value:sv MS_WD {:
+                HashMap<String,Integer> tab = new HashMap<String, Integer>();
+                tab.put(sname, sv);
+                RESULT = tab;
+            :}
+        | speeds:tab CM section_name:sname EQ speed_value:sv MS_WD {:
+                tab.put(sname, sv);
+                RESULT = tab;
+            :}
+;
+
+car_name ::= QSTRING:name {: RESULT = name; :}
+;
+
+section_name ::= QSTRING:name {: RESULT = name; :}
+;
+
+speed_value ::= INUM:sp {: RESULT = sp; :}
+;
+
+race_section ::= print_min_max performances:a {: System.out.println("WINNER: " + a[0] + " " + a[1]); :}
+| ;
+
+// --------------------------------------------------
+
+print_min_max ::= PRINTMM OP car_name CP OP section_names:sn CP S {: 
+                                                                System.out.println("Min: " + sn[0] + " Max: " + sn[1]);
+                                                                :}
+;
+
+section_names ::= section_name:sn {: 
+                                    Integer[] min_max = new Integer[2];
+                                    min_max[0] = 100000;
+                                    min_max[1] = 0;
+                                    Object carname = parser.stack(-3);
+                                    HashMap<String, Integer> speeds = parser.table.get(carname);
+                                    Integer speed = speeds.get(sn);
+                                    if(speed < min_max[0]){
+                                        min_max[0] = speed;
+                                    }
+                                    if(speed > min_max[1]){
+                                        min_max[1] = speed;
+                                    }
+                                    RESULT = min_max;
+                                 :} 
+                                 
+| section_names:mms CM section_name:sn {:
+                                        Object carname = parser.stack(-5);
+                                        HashMap<String,Integer> speeds = parser.table.get(carname);
+                                        Integer speed = speeds.get(sn);
+                                        if(speed < mms[0]){
+                                            mms[0] = speed;
+                                        }
+                                        if(speed > mms[1]){
+                                            mms[1] = speed;
+                                        }
+                                        RESULT = mms;
+                                        :}
+;
+
+
+// ---------------------------------------------------
+performances ::= performance:a {: RESULT = a; :}
+| performances:p performance:a {:
+                                Object[] f = new Object[2];
+                                if((Integer)a[1] < (Integer)p[1] ){
+                                    f[1] = a[1];
+                                    f[0] = a[0];
+                                }
+                                RESULT = f;
+                            :}
+;
+
+performance ::= car_name:cn ARR parts:total S {: 
+                                                Object[] a = new Object[2];
+                                                a[0] = cn;
+                                                a[1] = total;
+                                                System.out.println("Total: " + total);
+                                                RESULT = a;
+                                            :}
+;
+
+parts ::= nt2 part:tot {: RESULT = tot; :}
+| parts:tot2 OR nt3 part:tot {: 
+                                RESULT = tot + tot2;
+                            :}
+;
+
+nt2 ::= {: System.out.println((String)parser.stack(-1)); RESULT = (String)parser.stack(-1); :}
+;
+
+nt3 ::= {: RESULT = (String)parser.stack(-3); :}
+;
+
+part ::= part_name:pn COL drive_stats:ds {: 
+                                            System.out.println("PART" + pn + ": " + ds + " s");
+                                            RESULT = (Integer)ds;
+                                        :}
+;
+
+part_name ::= PART INUM:int_num {: RESULT = int_num; :}
+;
+
+drive_stats ::= nt0:marker section_name:sn distance:dis M_WD {:
+                                String carname = marker;
+                                HashMap<String,Integer> speeds = parser.table.get(carname);
+                                Integer speed = speeds.get(sn);
+                                RESULT = dis / speed;
+                            :}
+| drive_stats:res2 CM nt1:marker section_name:sn distance:dis M_WD {:
+                                String carname = marker;
+                                HashMap<String,Integer> speeds = parser.table.get(carname);
+                                Integer speed = speeds.get(sn);
+                                RESULT = (dis / speed) + res2;
+                            :}
+;
+
+nt0 ::= {: RESULT = (String)parser.stack(-2); :}
+;
+
+nt1 ::= {: RESULT = (String)parser.stack(-4); :}
+;
+
+distance ::= INUM:int_num {: RESULT = int_num; :}
+;
