@@ -1,0 +1,124 @@
+import java_cup.runtime.*;
+import java.util.*;
+import java.io.*;
+
+
+init with{:
+    table = new HashMap <String, HashMap <String, Integer>>();
+:};
+
+parser code {:
+    public HashMap <String, HashMap <String, Integer>> table;
+
+    public Object stack(int position){
+        return (((Symbol)stack.elementAt(tos + position)).value);
+    }
+:};
+
+
+/////////////////////////////
+//// Symbols Delaration
+////////////////////////////
+
+terminal SEP, TOK1, TOK2, TOK3, SCOLON, COMMA, OP, CP, EQ, DOT;
+ terminal String HOUSE_WD, QSTRING, START_WD, END_WD, IF_WD, THEN_WD, FI_WD, AND_WD, OR_WD, NOT_WD, PRINT_WD ;
+// terminal Double test;
+ terminal Integer INUM;
+
+non terminal prog, header, header1, house_section, house, pre_section, if ;
+ // non terminal String ;
+non terminal HashMap room_list;
+non terminal Boolean operands, bool_exp, print_list;
+// non terminal Integer ;
+// non terminal Double ;
+
+precedence left OR_WD, AND_WD;
+precedence left NOT_WD;
+
+
+/////////////////////////////
+//// Grammar
+////////////////////////////
+
+start with prog;
+
+prog ::= header SEP house_section SEP pre_section
+;
+
+header ::= header1 TOK1 SCOLON header1 TOK2 SCOLON header1 | header1 TOK2 SCOLON header1 TOK1 SCOLON header1
+;
+
+header1 ::= header1 TOK3 SCOLON | 
+;
+
+
+////////////////
+// House Section
+////////////////
+
+house_section ::= house house | house_section house house
+;
+
+house ::= HOUSE_WD QSTRING:key START_WD room_list:value END_WD {:
+parser.table.put(key, value);
+:}
+;
+
+room_list ::= QSTRING:name INUM:size {:
+                                HashMap<String, Integer> tab = new HashMap<String, Integer>();
+                                tab.put(name, size);
+                                RESULT = tab;
+                            :}
+| room_list:tab COMMA QSTRING:name INUM:size {:
+                                tab.put(name, size);
+                                RESULT = tab;
+                            :}
+;
+
+
+////////////////
+// Preferences Section
+////////////////
+
+pre_section ::= pre_section if | 
+;
+
+if ::= IF_WD bool_exp:exp THEN_WD print_list FI_WD {:
+:}
+;
+
+bool_exp ::= operands:ope {: RESULT = ope; :}
+| NOT_WD bool_exp:bool {: RESULT = !bool; :}
+| bool_exp:bool1 AND_WD bool_exp:bool2 {: RESULT = bool1 && bool2; :}
+| bool_exp:bool1 OR_WD bool_exp:bool2 {: RESULT = bool1 || bool2; :}
+| OP bool_exp:bool CP {: RESULT = bool; :}
+;
+
+operands ::= QSTRING:house DOT QSTRING:room EQ EQ INUM:gsize {:
+                                                                HashMap<String, Integer> m_house = parser.table.get(house);
+                                                                Integer m_size = m_house.get(room);
+                                                                if(m_size.equals(gsize)){
+                                                                    RESULT = true;
+                                                                }else {
+                                                                    RESULT = false;
+                                                                }
+                                                            :}
+;
+
+print_list ::= PRINT_WD QSTRING:qs SCOLON {:
+                                            if((Boolean)parser.stack(-4) == true){
+                                                System.out.println(qs);
+                                                RESULT = true;
+                                            }else{
+                                                RESULT = false;
+                                            }
+                                        :}
+| print_list PRINT_WD QSTRING:qs SCOLON {:
+                                        if((Boolean)parser.stack(-3) == true){
+                                            System.out.println(qs);
+                                            RESULT = true;
+                                        }else{
+                                            RESULT = false;
+                                        }
+                                    :}
+;
