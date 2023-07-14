@@ -1,0 +1,24 @@
+-14abcdefgABC;                  % <token1>
+10*100-101-10*1000-11110-10;    % <token2>
+08:12:34;                       % <token3>
+16:01:59;                       % <token3>
+82YXYXXXYX;                     % <token1>
+
+$$
+
+set position 2, 3 - fuel 10;                    % or other possible implementations of set
+declare {x=3; y=7; tires=5;} car;               % stores in hash table: car.x=3, car.y=7, car.tires=5
+
+? car.x==3 and car.y==5 or not car.tires==6 {   % TRUE and FALSE OR NOT FALSE = TRUE
+mv -1, -1, fuel -1;                             % prints new state: X: 1 Y: 2 FUEL: 9
+mv -1, -2, fuel -2;                             % prints new state: X: 0 Y: 0 FUEL: 7
+};
+
+fuel increases : max ( 3, car.x, car.y );       % The maximum is 7 (i.e., car.y)
+                                                % new state is: X: 0 Y: 0 FUEL: 14
+? car.y==4 {
+mv -1, -1, fuel -1;
+}else{
+mv -2, -2, fuel -3;             % prints new state: X: -2 Y: -2 FUEL: 11
+mv -1, -2, fuel -2;             % prints new state: X: -3 Y: -4 FUEL: 9
+};

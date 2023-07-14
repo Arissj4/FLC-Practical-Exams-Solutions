@@ -1,0 +1,303 @@
+import java_cup.runtime.*;
+import java.util.*;
+import java.io.*;
+
+
+init with{:
+    table = new HashMap <String, HashMap <String, Integer>>();
+:};
+
+parser code {:
+    public HashMap <String, HashMap <String, Integer>> table;
+
+    public Object stack(int position){
+        return (((Symbol)stack.elementAt(tos + position)).value);
+    }
+:};
+
+
+/////////////////////////////
+//// Symbols Delaration
+////////////////////////////
+
+terminal SEP, TOK1, TOK2, TOK3, SCOLON, COMMA, DASH, OC, CC, EQ, QUM, DOT, COLON, OP, CP;
+
+terminal String SET_WD, POS_WD, FUE_WD, DEC_WD, ELS_WD, AND_WD, OR_WD, NOT_WD, INC_WD, DECR_WD, MAX_WD, MIN_WD, MV_WD, VAR;
+
+// terminal Double test;
+
+terminal Integer SINUM;
+
+
+
+non terminal prog, header, header1, car_section, list_of_value;
+
+// non terminal String;
+
+non terminal HashMap atts;
+
+non terminal Object[] att;
+
+non terminal Integer[] set_ins, mv_list, emv_list, if, declare, fuel, commands, command, else;
+
+non terminal Boolean bool_exp;
+
+non terminal Integer min, max, variable_name_and_attribute;
+
+// non terminal Double ;
+
+
+precedence left OR_WD, AND_WD;
+precedence left NOT_WD;
+
+/////////////////////////////
+//// Grammar
+////////////////////////////
+
+start with prog;
+
+prog ::= header SEP car_section
+;
+
+header ::= header1 TOK3 SCOLON header1| header1 TOK3 SCOLON header1 TOK3 SCOLON header1 | header1 TOK3 SCOLON header1 TOK3 SCOLON header1 TOK3 SCOLON header1 | header1
+;
+
+header1 ::= header1 TOK1 SCOLON | header1 TOK2 SCOLON
+| ;
+
+///// Car Section
+
+car_section ::= set_ins commands
+;
+
+set_ins ::= SET_WD POS_WD SINUM:x COMMA SINUM:y DASH FUE_WD SINUM:f SCOLON {:
+                                                                    Integer[] pos = new Integer[3];
+                                                                    pos[0] = x;
+                                                                    pos[1] = y;
+                                                                    pos[2] = f;
+                                                                    RESULT = pos;
+                                                                :}
+| SET_WD FUE_WD SINUM:f DASH POS_WD SINUM:x COMMA SINUM:y SCOLON {:
+                                                                Integer[] pos = new Integer[3];
+                                                                pos[0] = x;
+                                                                pos[1] = y;
+                                                                pos[2] = f;
+                                                                RESULT = pos;    
+                                                                :}
+| SET_WD POS_WD SINUM:x COMMA SINUM:y SCOLON {:
+                                                Integer[] pos = new Integer[3];
+                                                pos[0] = x;
+                                                pos[1] = y;
+                                                pos[2] = 0;
+                                                RESULT = pos;                        
+                                            :}
+| SET_WD FUE_WD SINUM:f SCOLON {:
+                                Integer[] pos = new Integer[3];
+                                pos[0] = 0;
+                                pos[1] = 0;
+                                pos[2] = f;
+                                RESULT = pos;                                        
+                            :}
+| SET_WD DASH POS_WD SINUM:x COMMA SINUM:y SCOLON {:
+                                                    Integer[] pos = new Integer[3];
+                                                    pos[0] = x;
+                                                    pos[1] = y;
+                                                    pos[2] = 0;
+                                                    RESULT = pos;                    
+                                                :}
+| SET_WD DASH FUE_WD SINUM:f SCOLON {:
+                                        Integer[] pos = new Integer[3];
+                                        pos[0] = 0;
+                                        pos[1] = 0;
+                                        pos[2] = f;
+                                        RESULT = pos;                                
+                                    :}
+| SET_WD DASH SCOLON {:
+                        Integer[] pos = new Integer[3];
+                        pos[0] = 0;
+                        pos[1] = 0;
+                        pos[2] = 0;
+                        RESULT = pos;                                                
+                    :}
+;
+
+commands ::= command command command command 
+| commands command command
+;
+
+command ::= declare:de SCOLON {:RESULT=de;:}| if:res SCOLON {:RESULT=res;:}| fuel:fe SCOLON {:RESULT=fe;:}
+;
+
+declare ::= DEC_WD OC atts:att CC VAR:name {: 
+                                                RESULT = (Integer[])parser.stack(-5);
+                                                parser.table.put(name, att);
+                                            :}
+| declare:dec DEC_WD OC atts:att CC VAR:name {:
+                                                RESULT = dec;
+                                                parser.table.put(name, att);
+                                            :}
+;
+
+atts ::= VAR:name EQ SINUM:value SCOLON {:
+                        HashMap<String, Integer> a = new HashMap<String, Integer>();
+                        a.put(name, value);
+                        RESULT = a;
+                    :}
+| atts:tab VAR:name EQ SINUM:value SCOLON {:
+                        tab.put(name, value);
+                        RESULT = tab;
+                    :}
+;
+
+if ::= QUM bool_exp:bool OC mv_list:mv CC {: 
+                                            if(bool == true){
+                                                RESULT = mv;
+                                            }
+                                        :}
+| QUM bool_exp:bool OC mv_list:mv CC else:els {:
+                                                if(bool == true){
+                                                    RESULT = mv;
+                                                } else if(bool == false){
+                                                    RESULT = els;
+                                                }
+                                            :}
+;
+
+else ::= ELS_WD OC emv_list:emv CC
+;
+
+bool_exp ::= variable_name_and_attribute:val EQ EQ SINUM:inum {:
+            if(val.equals(inum)){
+                RESULT = true;
+            }
+            else{
+                RESULT = false;
+            }
+        :}
+| NOT_WD bool_exp:bool {: RESULT = !bool; :}
+| bool_exp:bool1 AND_WD bool_exp:bool2 {: RESULT = bool1 && bool2; :}
+| bool_exp:bool1 OR_WD bool_exp:bool2 {: RESULT = bool1 || bool2; :}
+| OP bool_exp:bool CP {: RESULT = bool; :}
+;
+
+variable_name_and_attribute ::= VAR:car DOT VAR:att {:
+                    HashMap<String, Integer> caratts = parser.table.get(car);
+                    Integer attval = caratts.get(att);
+                    RESULT = attval;
+                :}
+| VAR:car DOT VAR:att SINUM:id {:
+                    HashMap<String, Integer> caratts = parser.table.get(car);
+                    Integer attval = caratts.get(att+id);
+                    RESULT = attval;
+                :}
+;
+
+mv_list ::= MV_WD SINUM:x COMMA SINUM:y COMMA FUE_WD SINUM:f SCOLON {: 
+                                                                        Boolean res = (Boolean)parser.stack(-9);
+                                                                        if(res == true){
+                                                                            Integer[] a = (Integer[])parser.stack(-11);
+                                                                            a[0] = a[0] + x;
+                                                                            a[1] = a[1] + y;                                                                            a[2] = a[2] + f;
+                                                                            RESULT = a;
+                                                                            System.out.println("x: " + RESULT[0] + " y: " + RESULT[1] + " FUEL: " + RESULT[2]);
+                                                                        }
+                                                                    :}
+| mv_list:a MV_WD SINUM:x COMMA SINUM:y COMMA FUE_WD SINUM:f SCOLON {:
+                                                                        Boolean res = (Boolean)parser.stack(-10);
+                                                                        if(res == true){
+                                                                            a[0] = a[0] + x;
+                                                                            a[1] = a[1] + y;
+                                                                            a[2] = a[2] + f;
+                                                                            RESULT = a;
+                                                                            System.out.println("x: " + RESULT[0] + " y: " + RESULT[1] + " FUEL: " + RESULT[2]);
+                                                                        }
+                                                                    :}
+;
+
+emv_list ::= MV_WD SINUM:x COMMA SINUM:y COMMA FUE_WD SINUM:f SCOLON {:
+                                                                        Boolean res = (Boolean)parser.stack(-13);
+                                                                        if(res == false){
+                                                                            Integer[] a = (Integer[])parser.stack(-15);
+                                                                            a[0] = a[0] + x;
+                                                                            a[1] = a[1] + y;                                                                            a[2] = a[2] + f;
+                                                                            RESULT = a;
+                                                                            System.out.println("x: " + RESULT[0] + " y: " + RESULT[1] + " FUEL: " + RESULT[2]);
+                                                                        }
+                                                                    :}
+| emv_list:a MV_WD SINUM:x COMMA SINUM:y COMMA FUE_WD SINUM:f SCOLON {: 
+                                                                        Boolean res = (Boolean)parser.stack(-14);
+                                                                        if(res == false){
+                                                                            a[0] = a[0] + x;
+                                                                            a[1] = a[1] + y;
+                                                                            a[2] = a[2] + f;
+                                                                            RESULT = a;
+                                                                            System.out.println("x: " + RESULT[0] + " y: " + RESULT[1] + " FUEL: " + RESULT[2]);
+                                                                        }
+                                                                    :}
+;
+
+fuel ::= FUE_WD INC_WD COLON MIN_WD OP min:min CP {: 
+                                                    Integer[] a = (Integer[])parser.stack(-7);
+                                                    a[2] = a[2] + min;
+                                                    RESULT = a;
+                                                :}
+| FUE_WD INC_WD COLON MAX_WD OP max:max CP {:
+                                            Integer[] a = (Integer[])parser.stack(-7);
+                                            a[2] = a[2] + max;
+                                            RESULT = a;
+                                        :}
+| FUE_WD DECR_WD COLON MIN_WD OP min:min CP {: 
+                                            Integer[] a = (Integer[])parser.stack(-7);
+                                            a[2] = a[2] - min;
+                                            RESULT = a;
+                                        :}
+| FUE_WD DECR_WD COLON MAX_WD OP max:max CP {: 
+                                            Integer[] a = (Integer[])parser.stack(-7);
+                                            a[2] = a[2] - max;
+                                            RESULT = a;
+                                        :}
+;
+
+min ::= variable_name_and_attribute:name {:
+                                            RESULT = name;
+                                        :}
+| min:fval COMMA variable_name_and_attribute:sval {:
+                                                    if((Integer)sval < (Integer)fval){
+                                                        RESULT = sval;
+                                                    }else{
+                                                        RESULT = fval;
+                                                    }
+                                                :} 
+| SINUM:inum {:
+                RESULT = inum;
+            :}
+| min:fval COMMA SINUM:inum{:
+                            if((Integer)inum < (Integer)fval){
+                                RESULT = inum;
+                            }else{
+                                RESULT = fval;
+                            }
+                        :}
+;
+
+max ::= variable_name_and_attribute:name {:
+                                            RESULT = name;
+                                        :}
+| max:fval COMMA variable_name_and_attribute:sval {:
+                                                    if(sval > (Integer)fval){
+                                                        RESULT = sval;
+                                                    }else{
+                                                        RESULT = fval;
+                                                    }
+                                                :} 
+| SINUM:inum {:
+                RESULT = inum;
+            :}
+| max:fval COMMA SINUM:inum{:
+                            if((Integer)inum > (Integer)fval){
+                                RESULT = inum;
+                            }else{
+                                RESULT = fval;
+                            }
+                        :}
+;
