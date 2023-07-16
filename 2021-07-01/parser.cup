@@ -1,0 +1,154 @@
+import java_cup.runtime.*;
+import java.util.*;
+import java.io.*;
+
+
+init with{:
+    table = new HashMap <String, HashMap <String, Float>>();
+:};
+
+parser code {:
+    public HashMap <String, HashMap <String, Float>> table;
+
+    public Object stack(int position){
+        return (((Symbol)stack.elementAt(tos + position)).value);
+    }
+:};
+
+
+/////////////////////////////
+//// Symbols Delaration
+////////////////////////////
+
+terminal SEP, TOK1, TOK2, SC, OC, CC, CM, CO;
+ terminal String QSTRING, EK_WD, EURO_WD, KG_WD;
+ terminal Float FNUM;
+ terminal Integer INUM;
+
+non terminal prog, header, token1, token2, header1, warehouse_sec, material_type, product_sec, nt0 ;
+// non terminal String ;
+ non terminal HashMap material_list, list_component, list_element;
+// non terminal Integer ;
+// non terminal Double ;
+
+
+/////////////////////////////
+//// Grammar
+////////////////////////////
+
+start with prog;
+
+prog ::= header SEP warehouse_sec nt0 SEP product_sec
+;
+
+nt0 ::= {:System.out.println("---");:}
+;
+
+header ::= token1 token2 | token1 token2 token2 token2 | token1 token2 token2 token2 token2
+| TOK2 SC header1 TOK2 SC header1 | TOK2 SC header1 TOK2 SC header1 TOK2 SC header1
+;
+
+header1 ::= header1 TOK1 SC | 
+;
+
+token1 ::= TOK1 SC TOK1 SC TOK1 SC TOK1 SC | token1 TOK1 SC TOK1 SC
+;
+
+token2 ::= TOK2 SC TOK2 SC TOK2 SC
+;
+
+/////////////////////
+//// Warehouse
+////////////////////
+
+warehouse_sec ::= material_type material_type | warehouse_sec material_type material_type 
+;
+
+material_type ::= OC material_list:matlist CC QSTRING:mtname SC {:  parser.table.put(mtname, matlist); 
+                                                                    Set<String> keys = matlist.keySet();
+                                                                    Float a = 0f;
+                                                                    Float b = 1000000f;
+                                                                    String less = "";
+                                                                    String more = "";
+                                                                    for(String key : keys){
+                                                                        if((Float)matlist.get(key) > a){
+                                                                            a = (Float)matlist.get(key);
+                                                                            more = key;
+                                                                        }
+                                                                        if((Float)matlist.get(key) < b){
+                                                                            b = (Float)matlist.get(key);
+                                                                            less = key;
+                                                                        }
+                                                                    }
+                                                                    System.out.println(mtname + ':' + " less: " + less + " more: " + more);
+                                                            :}
+;
+
+material_list ::= QSTRING:mname FNUM:uprice EK_WD {:
+                                                    HashMap<String, Float> tab = new HashMap<String, Float>();
+                                                    tab.put(mname, uprice);
+                                                    RESULT = tab;
+                                                :}
+| material_list:b CM QSTRING:mname FNUM:uprice EK_WD {:
+                                                    b.put(mname,uprice);
+                                                    RESULT = b;
+                                                :}
+;
+
+/////////////////////
+//// Product
+////////////////////
+
+product_sec ::= product_sec FNUM:tax EURO_WD QSTRING:pname CO list_element:mlist SC {: 
+                                                                                System.out.println(pname);
+                                                                                Set<String> keys = mlist.keySet();
+                                                                                for(String key : keys){
+                                                                                    System.out.println(key + " " + mlist.get(key) + " euro");
+                                                                                }
+                                                                            :}
+| 
+;
+
+list_element ::= QSTRING:tname OC list_component:list CC {:
+                                                            HashMap<String, Float> newlist = new HashMap<String, Float>();
+                                                            HashMap<String, Float> elems = (HashMap)parser.table.get(tname);
+                                                            Set<String> keys = list.keySet();
+                                                            Float price = 0f;
+                                                            Integer quan = 0;
+                                                            Float fprice = 0f;
+                                                            Float tax = (Float)parser.stack(-7);
+                                                            for(String key : keys){
+                                                                price = elems.get(key);
+                                                                quan = (Integer)list.get(key);
+                                                                fprice = (price * quan) + tax;
+                                                                newlist.put(key, fprice);
+                                                            }
+                                                            RESULT = newlist;
+                                                        :}
+| list_element:mlist CM QSTRING:tname OC list_component:list CC {:
+                                                            HashMap<String, Float> elems = (HashMap)parser.table.get(tname);
+                                                            Set<String> keys = list.keySet();
+                                                            Float price = 0f;
+                                                            Integer quan = 0;
+                                                            Float fprice = 0f;
+                                                            Float tax = (Float)parser.stack(-9);
+                                                            for(String key : keys){
+                                                                price = elems.get(key);
+                                                                quan = (Integer)list.get(key);
+                                                                fprice = (price * quan) + tax;
+                                                                mlist.put(key, fprice);
+                                                            }
+                                                            RESULT = mlist;
+                                                        :}
+;
+
+list_component ::= QSTRING:mname INUM:quantity KG_WD {:
+                                                        HashMap<String, Integer> tab = new HashMap<String, Integer>();
+                                                        tab.put(mname, quantity);
+                                                        RESULT = tab;
+                                                    :}
+| list_component:tab CM QSTRING:mname INUM:quantity KG_WD {:
+                                                        tab.put(mname, quantity);
+                                                        RESULT = tab;
+                                                    :}
+;
