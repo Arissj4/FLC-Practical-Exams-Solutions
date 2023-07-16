@@ -1,0 +1,42 @@
+import java_cup.runtime.*;
+import java.util.*;
+import java.io.*;
+
+
+init with{:
+    table = new HashMap <String, HashMap <String, Double>>();
+:};
+
+parser code {:
+    public HashMap <String, HashMap <String, Double>> table;
+
+    public Object stack(int position){
+        return (((Symbol)stack.elementAt(tos + position)).value);
+    }
+:};
+
+
+/////////////////////////////
+//// Symbols Delaration
+////////////////////////////
+
+terminal ;
+// terminal String test;
+// terminal Double test;
+// terminal Integer test;
+
+non terminal prog ;
+// non terminal String ;
+// non terminal HashMap ;
+// non terminal Integer ;
+// non terminal Double ;
+
+
+/////////////////////////////
+//// Grammar
+////////////////////////////
+
+start with prog;
+
+prog ::= 
+;
