@@ -1,0 +1,122 @@
+import java_cup.runtime.*;
+import java.util.*;
+import java.io.*;
+
+
+init with{:
+    table = new HashMap <String, HashMap <String, Float>>();
+:};
+
+parser code {:
+    public HashMap <String, HashMap <String, Float>> table;
+
+    public Object stack(int position){
+        return (((Symbol)stack.elementAt(tos + position)).value);
+    }
+:};
+
+
+/////////////////////////////
+//// Symbols Delaration
+////////////////////////////
+
+terminal SEP, TOK1, TOK2, TOK3, SC, DASH, CM, PAM;
+ terminal String QSTRING, EURO_WD;
+terminal Float FNUM;
+terminal Integer INUM;
+
+non terminal prog, header, header1, header2, header3, dres_section, dresses, shop_section ;
+non terminal HashMap prod_lsit;
+non terminal Object[] purch_prod, purchasig;
+
+
+/////////////////////////////
+//// Grammar
+////////////////////////////
+
+start with prog;
+
+prog ::= header SEP dres_section SEP shop_section
+;
+
+header ::= header1 header2 | TOK2 SC header3 | TOK2 SC header3 TOK2 SC header3
+;
+
+header1 ::= TOK1 SC TOK1 SC TOK1 SC | header1 TOK1 SC TOK1 SC
+;
+
+header2 ::= TOK2 SC TOK2 SC TOK2 SC | TOK2 SC TOK2 SC TOK2 SC TOK2 SC TOK2 SC TOK2 SC TOK2 SC TOK2 SC TOK2 SC | TOK2 SC TOK2 SC TOK2 SC TOK2 SC TOK2 SC TOK2 SC TOK2 SC TOK2 SC TOK2 SC TOK2 SC
+;
+
+header3 ::= header3 TOK1 SC | header3 TOK3 SC | 
+;
+
+
+/////////////////////////////
+//// Dresses Section
+////////////////////////////
+
+dres_section ::= dresses dresses dresses | dres_section dresses dresses
+;
+
+dresses ::= QSTRING:dresname DASH prod_lsit:prolist SC
+{:
+    parser.table.put(dresname, prolist);
+:}
+;
+
+prod_lsit ::= INUM:prodid QSTRING:prodname FNUM:cost EURO_WD 
+{:
+    HashMap tab = new HashMap<String, Float>();
+    tab.put(prodname, cost);
+    RESULT = tab;
+:}
+| prod_lsit:tab CM INUM:prodid QSTRING:prodname FNUM:cost EURO_WD 
+{:
+    tab.put(prodname, cost);
+    RESULT = tab;
+:}
+;
+
+/////////////////////////////
+//// Shopping Section
+////////////////////////////
+
+shop_section ::= purchasig
+;
+
+purchasig ::= QSTRING:dresname INUM:percent PAM DASH purch_prod:fprice SC
+{:
+    System.out.println("TOTAL: " + fprice[1] + " euro " + "N_PROD: " + fprice[0]);
+:}
+| purchasig:pre QSTRING:dresname INUM:percent PAM DASH purch_prod:fprice SC
+{:
+    System.out.println("TOTAL: " + fprice[1] + " euro " + "N_PROD: " + fprice[0]);
+:}
+;
+
+purch_prod ::= QSTRING:prodname INUM:quantity 
+{:
+    System.out.println((String)parser.stack(-5));
+    HashMap dress = (HashMap)parser.table.get((String)parser.stack(-5));
+    Float cost = (Float)dress.get(prodname);
+    Integer pre = (Integer)parser.stack(-4);
+    Float fin = cost * quantity * pre / 100;
+    System.out.println(prodname + " " + fin + " euro");
+    Object[] a = new Object[2];
+    a[0] = quantity;
+    a[1] = fin;
+    RESULT = a;
+:}
+| purch_prod:price CM QSTRING:prodname INUM:quantity 
+{:
+    HashMap dress = (HashMap)parser.table.get((String)parser.stack(-7));
+    Float cost = (Float)dress.get(prodname);
+    Integer pre = (Integer)parser.stack(-6);
+    Float fin = cost * quantity * pre / 100;
+    System.out.println(prodname + " " + fin + " euro");
+    price[0] = (Integer)price[0] + quantity;
+    price[1] = (Float)price[1] + fin;
+    RESULT = price;
+:}
+;
